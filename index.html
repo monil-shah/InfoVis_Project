@@ -1,17 +1,445 @@
-<html>
-    <head>
-        <title></title>
-        <script src="d3.js"></script>
-        <style>
 
-        </style>
-    </head>
-    <body>
-        <svg id="chart">
+<!DOCTYPE html>
+<meta charset="utf-8">
+<style>
+    .link {
+        fill: none;
+        stroke: #555;
+        stroke-opacity: 0.4;
+        stroke-width: 1px;
+    }
+    text {
+        font-family: "Arial Black", Gadget, sans-serif;
+        fill: black;
+        font-weight: bold;
+        font-size: 14px
+    }
 
+    .xAxis .tick text{
+        fill: black;
+    }
+    .grid .tick line{
+        stroke: grey;
+        stroke-dasharray: 5, 10;
+        opacity: 0.7;
+    }
+    .grid path{
+        stroke-width: 0;
+    }
+
+    .node circle {
+        fill: #999;
+    }
+    .node--internal circle {
+        fill: #555;
+    }
+    .node--internal text {
+        font-size: 16px;
+        text-shadow: 0 2px 0 #fff, 0 -2px 0 #fff, 2px 0 0 #fff, -2px 0 0 #fff;
+    }
+    .node--leaf text {
+        fill: white;
+    }
+    .ballG text {
+        fill: white;
+    }
+
+    .shadow {
+        -webkit-filter: drop-shadow( -1.5px -1.5px 1.5px #000 );
+        filter: drop-shadow( -1.5px -1.5px 1.5px #000 );
+    }
+</style>
+
+<body>
+    <h1>Yelp Data Insight(Las Vegas Restaurants- Dendogram+bar chart)</h1>
+    <div> On hover Ball color shows reliability-->
+      Reliable:
+        <svg id="legend" width="30" height="30">
+            <rect width="20" height="20" style="fill:#00FF00">
         </svg>
-    </body>
-    <script>
+        Non reliable:<svg id="legend" width="30" height="30">
+            <rect width="20" height="20" style="fill:#FF0000">
+    <div>Bar Chart Rating Range -->
+      </svg> Positive Rating: <svg id="legend" width="30" height="30">
+          <rect width="20" height="20" style="fill:#086fad">
+      </svg> Negative Rating: <svg id="legend" width="30" height="30">
+          <rect width="20" height="20" style="fill:#c7001e">
+      </svg>
+    </div>
+</div>
+    <svg id = "dendo" width="1000" height="5500">
+    </svg>
 
-    </script>
-</html>
+</body>
+
+<script src="d3.js"></script>
+<script>
+
+    // main svg
+    var svg = d3.select("#dendo"),
+            width = +svg.attr("width"),
+            height = +svg.attr("height"),
+            g = svg.append("g").attr("transform", "translate(50,20)");       // move right 20px.
+
+    // x-scale and x-axis
+    var experienceName = ["", "1.0","2.0","3.0","4.0","5.0"];
+    var formatSkillPoints = function (d) {
+        return experienceName[d % 6];
+    }
+    var xScale =  d3.scaleLinear()
+            .domain([0,5])
+            .range([0, 400]);
+
+    var xAxis = d3.axisTop()
+            .scale(xScale)
+            .ticks(5)
+            .tickFormat(formatSkillPoints);
+
+            var color = d3.scaleLinear()
+            .domain([1,4,5])
+    .range(["#c7001e", "#92c6db", "#086fad"]);
+
+    var colorball = d3.scaleLinear()
+    .domain([10,100])
+.range(["#FF0000", "#00FF00"]);
+    // Setting up a way to handle the data
+    var tree = d3.cluster()                 // This D3 API method setup the Dendrogram datum position.
+            .size([height, width - 460])    // Total width - bar chart width = Dendrogram chart width
+            .separation(function separate(a, b) {
+                return a.parent == b.parent            // 2 levels tree grouping for category
+                || a.parent.parent == b.parent
+                || a.parent == b.parent.parent ? 0.4 : 0.8;
+            });
+
+    var stratify = d3.stratify()            // This D3 API method gives cvs file flat data array dimensions.
+            .parentId(function(d) { return d.id.substring(0, d.id.lastIndexOf(".")); });
+
+    d3.json("Las_Vegas_Business.json",  function(error, data) {
+        if (error) throw error;
+
+        var avg=[];
+        listofobjs=[];
+        var year=0;
+        var singleObj1={}
+        singleObj1['id'] = "Restaurant"
+        listofobjs.push(singleObj1)
+        var category = [...new Set(data.map(d=>d.category))]
+        console.log(category)
+        for(var c=0;c<category.length;c++){
+          var singleObj2 = {}
+          singleObj2['id'] = "Restaurant."+category[c];
+          listofobjs.push(singleObj2)
+        for(var i=0;i<data.length;i++){
+          var count = d3.mean(data[i].quarters.map(d=>d.count))
+          avg.push(count)
+          // console.log(d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2013")!=-1) return d}).map(d=>d.rating)))
+          // var rating = data[i].quarters.map(d=>d.rating);
+          // var avg1 = d3.mean(data[i].quarters.map(d=>d.rating))
+          // avg.push(avg1)
+          // var max = d3.max(rating)
+          // var min = d3.min(rating)
+          // var median = d3.median(rating)
+          // console.log(avg1,max,min,median)
+          console.log(data.filter(d=>{if(d.category === category[c]) return d}).map(d=>{d.business_name = d.business_name.split('.').join('');
+           return d.business_name}))
+           if(data[i].category === category[c] && data[i].business_name !== "Egg Works" && data[i].business_name !== "BabyStacks Cafe" && data[i].business_name !== "Grand Lux Cafe" && data[i].business_name !== "Nobu"){
+             var name = data[i].business_name;
+             name.split('.').join('');
+             var singleObj3 = {}
+             singleObj3['id']="Restaurant."+category[c]+"."+name    //data.filter(d=>{if(d.category === category[c]) return d}).map(d=>d.business_name);
+             listofobjs.push(singleObj3)
+             // listofobjs.splice(listofobjs.indexOf("Restaurant.American (Traditional).EggWorks",1))
+             var year=[]
+             var rating =0;
+             console.log(data[i].quarters.map(d=>{
+               if(d.quarter.indexOf("2005")!=-1){
+                 year.push(2005)
+               }
+               if(d.quarter.indexOf("2006")!=-1){
+                 year.push(2006)
+               }
+               if(d.quarter.indexOf("2007")!=-1){
+                 year.push(2007)
+               }
+               if(d.quarter.indexOf("2008")!=-1){
+                 year.push(2008)
+               }
+               if(d.quarter.indexOf("2008")!=-1){
+                 year.push(2008)
+               }
+               if(d.quarter.indexOf("2009")!=-1){
+                 year.push(2009)
+               }
+               if(d.quarter.indexOf("2010")!=-1){
+                 year.push(2010)
+               }
+               if(d.quarter.indexOf("2011")!=-1){
+                 year.push(2011)
+               }
+               if(d.quarter.indexOf("2012")!=-1){
+                 year.push(2012)
+               }
+               if(d.quarter.indexOf("2013")!=-1){
+                 year.push(2013)
+               }
+               if(d.quarter.indexOf("2014")!=-1){
+                 year.push(2014)
+               }
+               if(d.quarter.indexOf("2015")!=-1){
+                 year.push(2015)
+               }
+               if(d.quarter.indexOf("2016")!=-1){
+                 year.push(2016)
+               }
+               if(d.quarter.indexOf("2017")!=-1){
+                 year.push(2017)
+               }
+             }))
+             year = [...new Set(year)].sort()
+             if(d3.median(data[i].quarters.map(d=>d.rating))>3.5){
+                var singleObj5= {}
+               singleObj5['id']="Restaurant."+category[c]+"."+name+"."+"Consistently Above Average"
+               singleObj5['value']= d3.mean(data[i].quarters.map(d=>d.rating))
+               singleObj5['count'] = d3.mean(data[i].quarters.map(d=>d.count))
+               listofobjs.push(singleObj5);
+             }
+             else if(d3.mean(data[i].quarters.map(d=>d.rating))<3.4){
+               var singleObj6= {}
+              singleObj6['id']="Restaurant."+category[c]+"."+name+"."+"Consistently Below Average"
+              singleObj6['value']= d3.mean(data[i].quarters.map(d=>d.rating))
+              singleObj6['count'] = d3.mean(data[i].quarters.map(d=>d.count))
+              listofobjs.push(singleObj6);
+             }
+             else{
+             for(var y=0;y<year.length;y++){
+               var singleObj4= {}
+               if(year[y]===2005){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2005")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2005")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2006){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2006")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2006")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2007){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2007")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2007")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2008){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2008")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2008")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2009){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2009")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2009")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2010){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2010")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2010")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2011){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2011")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2011")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2012){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2012")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2012")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2013){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2013")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2013")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2014){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2014")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2014")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2015){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2015")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2015")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2016){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2016")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2016")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+               }
+               if(year[y]===2017){
+                singleObj4['id']="Restaurant."+category[c]+"."+name+"."+year[y]
+                singleObj4['value']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2017")!=-1) return d}).map(d=>d.rating))
+                singleObj4['count']= d3.mean(data[i].quarters.filter(d=>{if(d.quarter.indexOf("2017")!=-1) return d}).map(d=>d.count))
+                listofobjs.push(singleObj4);
+              }}
+
+             }
+
+
+         }
+
+        }}// }}
+        console.log(d3.mean(avg))
+        console.log(listofobjs)
+        var root = stratify(listofobjs);
+        tree(root);
+
+
+
+        // Draw every datum a line connecting to its parent.
+        var link = g.selectAll(".link")
+                .data(root.descendants().slice(1))
+                .enter().append("path")
+                .attr("class", "link")
+                .attr("d", function(d) {
+                    return "M" + d.y + "," + d.x
+                            + "C" + (d.parent.y + 80) + "," + d.x
+                            + " " + (d.parent.y + 80) + "," + d.parent.x
+                            + " " + d.parent.y + "," + d.parent.x;
+                });
+
+        // Setup position for every datum; Applying different css classes to parents and leafs.
+        var node = g.selectAll(".node")
+                .data(root.descendants())
+                .enter().append("g")
+                .attr("class", function(d) { return "node" + (d.children ? " node--internal" : " node--leaf"); })
+                .attr("transform", function(d) { return "translate(" + d.y + "," + d.x + ")"; });
+
+        // Draw every datum a small circle.
+        node.append("circle")
+                .attr("r", 4);
+
+        // Setup G for every leaf datum.
+        var leafNodeG = g.selectAll(".node--leaf")
+                .append("g")
+                .attr("class", "node--leaf-g")
+                .attr("transform", "translate(" + 8 + "," + -13 + ")");
+
+        leafNodeG.append("rect")
+                .attr("class","shadow")
+                .style("fill", function (d) {return d.data.color;})
+                .attr("width", 2)
+                .attr("height", 30)
+                .attr("rx", 2)
+                .attr("ry", 2)
+                .attr("fill",d=>color(d.data.value))
+                .transition()
+                    .duration(800)
+                    .attr("width", function (d) {return xScale(d.data.value);});
+
+        leafNodeG.append("text")
+                .attr("dy", 19.5)
+                .attr("x", 8)
+                .style("text-anchor", "start")
+                .text(function (d) {
+                    return d.data.id.substring(d.data.id.lastIndexOf(".") + 1);
+                });
+
+        // Write down text for every parent datum
+        var internalNode = g.selectAll(".node--internal");
+        internalNode.append("text")
+                .attr("y", -10)
+                .style("text-anchor", "middle")
+                .text(function (d) {
+                    return d.data.id.substring(d.data.id.lastIndexOf(".") + 1);
+                });
+
+        // Attach axis on top of the first leaf datum.
+        var firstEndNode = g.select(".node--leaf");
+            firstEndNode.insert("g")
+                    .attr("class","xAxis")
+                    .attr("transform", "translate(" + 7 + "," + -14 + ")")
+                    .call(xAxis);
+
+            // tick mark for x-axis
+            firstEndNode.insert("g")
+                    .attr("class", "grid")
+                    .attr("transform", "translate(7," + (height - 15) + ")")
+                    .call(d3.axisBottom()
+                            .scale(xScale)
+                            .ticks(5)
+                            .tickSize(-height, 0, 0)
+                            .tickFormat("")
+                    );
+
+        // Emphasize the y-axis baseline.
+        svg.selectAll(".grid").select("line")
+                .style("stroke-dasharray","20,1")
+                .style("stroke","black");
+
+        // The moving ball
+        var ballG = svg.insert("g")
+                .attr("class","ballG")
+                .attr("transform", "translate(" + 1100 + "," + height/2 + ")");
+        ballG.insert("circle")
+                .attr("class","shadow")
+                .style("fill","black")
+                .attr("r", 5);
+        ballG.insert("text")
+                .style("text-anchor", "middle")
+                .attr("dy",5)
+                .text("0.0");
+
+        // Animation functions for mouse on and off events.
+        d3.selectAll(".node--leaf-g")
+                .on("mouseover", handleMouseOver)
+                .on("mouseout", handleMouseOut);
+
+        function handleMouseOver(d) {
+            var leafG = d3.select(this);
+
+            leafG.select("rect")
+                    .attr("stroke","#4D4D4D")
+                    .attr("stroke-width","2");
+
+
+            var ballGMovement = ballG.transition()
+                    .duration(400)
+                    .attr("transform", "translate(" + (d.y
+                            + xScale(d.data.value) + 90) + ","
+                            + (d.x + 1.5) + ")");
+
+            ballGMovement.select("circle")
+                    .style("fill",colorball(d.data.count))
+                    .attr("r", 18);
+
+            ballGMovement.select("text")
+                    .delay(300)
+                    .text(Number(d.data.value).toFixed(1));
+        }
+        function handleMouseOut() {
+            var leafG = d3.select(this);
+
+            leafG.select("rect")
+                    .attr("stroke-width","0");
+        }
+
+    });
+
+    function row(d) {
+        return {
+            id: d.business_name,
+            value: d.category,
+            color: d.business_id
+        };
+    }
+</script>
